@@ -12,6 +12,3 @@ convention = {
 
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=convention)
-
-
-from src.models.db.user import User

@@ -1,9 +1,11 @@
 from typing import Optional
-from contextlib import contextmanager
+from contextlib import asynccontextmanager
+from asyncio import current_task
 
 from loguru import logger
-from sqlalchemy import URL, create_engine
-from sqlalchemy.orm import Session, sessionmaker, scoped_session
+from sqlalchemy import URL, text
+from sqlalchemy.ext.asyncio import async_sessionmaker, async_scoped_session, create_async_engine, AsyncSession, \
+    AsyncEngine
 
 from src.config import Config
 from src.exceptions.exceptions import NoDatabaseException
@@ -14,30 +16,33 @@ class Database:
         self.config = config
 
         self.is_db_ok = True
+
         self.__url_connection: Optional[URL] = None
-        self.__session_factory: Optional[scoped_session] = None
+        self.__session_factory: Optional[async_scoped_session] = None
+        self.__engine: Optional[AsyncEngine] = None
 
         try:
-            self.create_engine()
-        except Exception:
+            self.create_async_engine()
+        except Exception as exc:
+            logger.error('Database connection error: {}'.format(exc))
             self.is_db_ok = False
 
-    @contextmanager
-    def auto_session(self):
+    @asynccontextmanager
+    async def auto_session(self):
         if not self.is_db_ok:
             raise NoDatabaseException('Can`t connect to database')
 
-        current_session: Session = self.__session_factory()
+        current_session: AsyncSession = self.__session_factory()
         try:
             yield current_session
         except Exception:
             logger.error(f'Session rollback because of exception')
-            current_session.rollback()
+            await current_session.rollback()
             raise
         else:
-            current_session.commit()
+            await current_session.commit()
         finally:
-            current_session.close()
+            await current_session.close()
 
     @property
     def url_connection(self) -> URL:
@@ -52,14 +57,26 @@ class Database:
             )
         return self.__url_connection
 
-    def create_engine(self) -> None:
+    def create_async_engine(self) -> None:
 
-        engine = create_engine(self.url_connection, echo=True)
-        self.__session_factory: scoped_session = scoped_session(
-            sessionmaker(
-                bind=engine,
+        self.__engine = create_async_engine(self.url_connection, echo=True, pool_pre_ping=True)
+        self.__session_factory: async_scoped_session = async_scoped_session(
+            async_sessionmaker(
+                bind=self.__engine,
                 autoflush=False,
                 autocommit=False,
-                class_=Session
-            )
+                class_=AsyncSession
+            ),
+            scopefunc=current_task
         )
+
+    async def check_connection(self) -> bool:
+        try:
+            async with self.__engine.connect() as connect:
+                await connect.execute(text('SELECT 1'))
+            self.is_db_ok = True
+            return True
+        except Exception as exc:
+            logger.error("Database connection check failed: {}", exc)
+            self.is_db_ok = False
+            return False
