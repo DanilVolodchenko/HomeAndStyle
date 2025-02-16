@@ -1,17 +1,20 @@
 from pydantic import BaseModel, EmailStr
 
-from ..models.db.constants import UserRoles
+from .constants import UserRoles
 
 
-class UserDto(BaseModel):
+class BaseUserDto(BaseModel):
     email: EmailStr
 
 
-class CreateUserDto(UserDto):
-    password: str
-    role: UserRoles = UserRoles.USER
+class UserDto(BaseUserDto):
+    role: UserRoles
     send_email: bool
 
 
-class VerifyUserDto(UserDto):
+class InsertUserDto(UserDto):
+    password: str
+
+
+class VerifyUserDto(BaseUserDto):
     password: str
