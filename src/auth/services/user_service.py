@@ -2,8 +2,9 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...models.db.db import Database
 from ..repositories.user import UserRepository
+from ..exceptions import UserNotFoundException
+from ...models.db import Database
 
 
 class UserService:
@@ -23,5 +24,7 @@ class UserService:
         async with self.database.auto_session() as self._session:
             user = await self.user_repository.get_user_by_email(email)
             if not user:
-                raise ValueError('Test Error')
+                raise UserNotFoundException(f'User with {email} not found')
             return user
+
+    async def create_user(self, user: C):
