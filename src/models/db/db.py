@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, AsyncIterator
 from contextlib import asynccontextmanager
 from asyncio import current_task
 
@@ -7,20 +7,17 @@ from sqlalchemy import URL, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, async_scoped_session, create_async_engine, AsyncSession, \
     AsyncEngine
 
-from src.config import Config
-from src.exceptions.exceptions import NoDatabaseException
+from src.common.exceptions.exceptions import NoDatabaseException
+from ...config import config
 
 
 class Database:
-    def __init__(self, config: Config) -> None:
-        self.config = config
-
-        self.is_db_ok = True
-
+    def __init__(self) -> None:
         self.__url_connection: Optional[URL] = None
-        self.__session_factory: Optional[async_scoped_session] = None
+        self.__session_factory: Optional[async_scoped_session[AsyncSession]] = None
         self.__engine: Optional[AsyncEngine] = None
 
+        self.is_db_ok: bool = True
         try:
             self.create_async_engine()
         except Exception as exc:
@@ -28,7 +25,7 @@ class Database:
             self.is_db_ok = False
 
     @asynccontextmanager
-    async def auto_session(self):
+    async def auto_session(self) -> AsyncIterator[AsyncSession]:
         if not self.is_db_ok:
             raise NoDatabaseException('Can`t connect to database')
 
@@ -48,18 +45,18 @@ class Database:
     def url_connection(self) -> URL:
         if not self.__url_connection:
             self.__url_connection = URL.create(
-                drivername=self.config.db.drivername,
-                username=self.config.db.username,
-                password=self.config.db.password,
-                host=self.config.db.host,
-                port=int(self.config.db.port),
-                database=self.config.db.database
+                drivername=config.db.drivername,
+                username=config.db.username,
+                password=config.db.password,
+                host=config.db.host,
+                port=int(config.db.port),
+                database=config.db.database
             )
         return self.__url_connection
 
     def create_async_engine(self) -> None:
-
         self.__engine = create_async_engine(self.url_connection, echo=True, pool_pre_ping=True)
+
         self.__session_factory: async_scoped_session = async_scoped_session(
             async_sessionmaker(
                 bind=self.__engine,
