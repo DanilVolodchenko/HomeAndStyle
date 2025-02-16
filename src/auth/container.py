@@ -1,25 +1,16 @@
 from dependency_injector import containers, providers
 from passlib.hash import pbkdf2_sha512
 
-from src.auth.services.security_service import Security512Service
+from .managers.security_manager import Security512Manager
+from .services.user_service import UserService
+from ..models.db.db import Database
 
 
 class AuthContainer(containers.DeclarativeContainer):
-    security_512_service = providers.Factory(Security512Service, pbkdf2_sha512)
-    r = security_512_service.provided
-    print(r)
+    wiring_config = containers.WiringConfiguration(modules=['.routers'])
 
+    database = providers.Singleton(Database)
 
-from dependency_injector.wiring import Provide, inject
+    security_512_manager = providers.Factory(Security512Manager)
 
-
-@inject
-def main(sec_ser: Security512Service = Provide[AuthContainer.security_512_service]):
-    return sec_ser.hash('12')
-
-
-if __name__ == 'AuthContainer':
-    container = AuthContainer()
-    container.wire(modules=[__name__])
-
-    print(main())
+    user_service = providers.Factory(UserService, database, security_512_manager)
