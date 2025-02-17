@@ -1,8 +1,8 @@
 from dependency_injector import containers, providers
-from passlib.hash import pbkdf2_sha512
 
-from .managers.security_manager import Security512Manager
+from .securities.security_512 import Security512
 from .services.user_service import UserService
+from .services.auth_service import AuthService
 from ..models.db.db import Database
 
 
@@ -11,6 +11,7 @@ class AuthContainer(containers.DeclarativeContainer):
 
     database = providers.Singleton(Database)
 
-    security_512_manager = providers.Factory(Security512Manager)
+    security_512 = providers.Factory(Security512)
 
-    user_service = providers.Factory(UserService, database, security_512_manager)
+    user_service = providers.Factory(UserService, database, security_512)
+    auth_service = providers.Factory(AuthService, database, security_512)
