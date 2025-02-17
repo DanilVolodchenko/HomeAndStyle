@@ -11,3 +11,7 @@ class UserNotFoundException(UserBaseException):
 
 class UserAlreadyExistsException(UserBaseException):
     """User already exists."""
+
+
+class PasswordException(HomeAndStyleBaseException):
+    """Password exception."""
