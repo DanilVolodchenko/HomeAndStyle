@@ -1,5 +1,4 @@
 from typing import Any
-from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -41,6 +40,14 @@ class DB(BaseConfig):
     database: str = 'homeandstyle'
 
 
+class Security(BaseConfig):
+    model_config = SettingsConfigDict()
+
+    secret_key: str
+    algorithm: str
+    access_token_expire_minutes: int
+
+
 class Log(BaseConfig):
     model_config = SettingsConfigDict(env_prefix='LOG_')
 
@@ -52,6 +59,7 @@ class Config(BaseSettings):
     local_server: LocalServer = Field(default_factory=LocalServer)
     db: DB = Field(default_factory=DB)
     allows: Allows = Field(default_factory=Allows)
+    security: Security = Field(default_factory=Security)
     log: Log = Field(default_factory=Log)
 
 
